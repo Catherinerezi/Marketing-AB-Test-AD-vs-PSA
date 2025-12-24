@@ -82,7 +82,6 @@ def safe_read_csv(path_or_buf):
     return pd.read_csv(path_or_buf)
 
 @st.cache_data(show_spinner=True)
-@st.cache_data(show_spinner=True)
 def load_repo_csv(filename="marketing_AB.csv"):
     """
     Safe loader for Streamlit Cloud:
@@ -256,29 +255,33 @@ if mode == "Upload CSV":
         st.stop()
     df_raw = safe_read_csv(uploaded)
 
-elif mode == "Baca file repo (marketing_AB.csv)":
-    cwd, repo_root, csvs = detect_repo_root_and_csvs()
-    st.sidebar.write("CWD:", cwd)
-    st.sidebar.write("Repo root:", repo_root)
+full_path = Path(repo_root) / chosen
 
-    if not csvs:
-        st.error(
-            "Tidak ada file CSV yang kebaca di runtime Streamlit Cloud.\n\n"
-            "Solusi: pakai 'URL CSV (raw)' atau 'Upload CSV'."
-        )
-        st.stop()
+try:
+    size = full_path.stat().st_size
+except Exception as e:
+    st.error(f"Gagal akses file: {chosen}\nError: {e}")
+    st.stop()
 
-    st.sidebar.subheader("CSV terdeteksi di repo")
-    chosen = st.sidebar.selectbox("Pilih file CSV:", csvs, index=0)
-    st.sidebar.code("\n".join(csvs[:30]))
+st.sidebar.write("File size (bytes):", size)
 
-    full_path = Path(repo_root) / chosen
-    try:
-        df_raw = pd.read_csv(full_path)
-        st.sidebar.success(f"Loaded from: {chosen}")
-    except Exception as e:
-        st.error(f"Gagal baca file: {chosen}\nError: {e}")
-        st.stop()
+if size < 10:
+    st.error(
+        f"File '{chosen}' terdeteksi KOSONG (size={size} bytes).\n\n"
+        "Ini penyebab error: No columns to parse from file.\n"
+        "Pilih CSV lain (yang ukurannya besar) atau re-upload file CSV yang benar ke repo."
+    )
+    st.stop()
+
+# Debug: tampilkan 200 char pertama
+try:
+    with open(full_path, "r", encoding="utf-8", errors="replace") as f:
+        head_txt = f.read(200)
+    st.sidebar.code(head_txt if head_txt.strip() else "(file blank)")
+except Exception:
+    pass
+
+df_raw = pd.read_csv(full_path)
 
 else:  # URL
     if not url_in:

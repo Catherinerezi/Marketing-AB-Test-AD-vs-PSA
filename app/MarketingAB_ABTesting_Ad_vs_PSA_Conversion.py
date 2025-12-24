@@ -218,6 +218,36 @@ with st.sidebar:
 # -----------------------
 # Load data
 # -----------------------
+@st.cache_data(show_spinner=True)
+def detect_repo_root_and_csvs():
+    cwd = Path.cwd().resolve()
+
+    # Deteksi root repo pakai marker yang hampir pasti ada di Streamlit Cloud
+    markers = ["requirements.txt", "README.md", "app"]
+    repo_root = None
+    for p in [cwd] + list(cwd.parents)[:8]:
+        try:
+            if any((p / m).exists() for m in markers):
+                repo_root = p
+                break
+        except Exception:
+            continue
+
+    if repo_root is None:
+        repo_root = cwd
+
+    # Kumpulin daftar CSV di repo_root (AMAN, tidak nyapu sampai "/")
+    csvs = []
+    try:
+        for f in repo_root.rglob("*.csv"):
+            if f.is_file():
+                csvs.append(str(f.relative_to(repo_root)))
+    except Exception:
+        pass
+
+    csvs = sorted(csvs)
+    return str(cwd), str(repo_root), csvs
+
 df_raw = None
 
 if mode == "Upload CSV":
@@ -227,20 +257,28 @@ if mode == "Upload CSV":
     df_raw = safe_read_csv(uploaded)
 
 elif mode == "Baca file repo (marketing_AB.csv)":
-    df_raw, found_path, cwd, repo_root = load_repo_csv("marketing_AB.csv")
+    cwd, repo_root, csvs = detect_repo_root_and_csvs()
     st.sidebar.write("CWD:", cwd)
     st.sidebar.write("Repo root:", repo_root)
 
-    if df_raw is None:
+    if not csvs:
         st.error(
-            "CSV tidak ditemukan.\n\n"
-            "Pastikan file ada di salah satu lokasi:\n"
-            "- marketing_AB.csv (root)\n"
-            "- raw_data/marketing_AB.csv\n"
+            "Tidak ada file CSV yang kebaca di runtime Streamlit Cloud.\n\n"
+            "Solusi: pakai 'URL CSV (raw)' atau 'Upload CSV'."
         )
         st.stop()
 
-    st.sidebar.success(f"Loaded from: {found_path}")
+    st.sidebar.subheader("CSV terdeteksi di repo")
+    chosen = st.sidebar.selectbox("Pilih file CSV:", csvs, index=0)
+    st.sidebar.code("\n".join(csvs[:30]))
+
+    full_path = Path(repo_root) / chosen
+    try:
+        df_raw = pd.read_csv(full_path)
+        st.sidebar.success(f"Loaded from: {chosen}")
+    except Exception as e:
+        st.error(f"Gagal baca file: {chosen}\nError: {e}")
+        st.stop()
 
 else:  # URL
     if not url_in:

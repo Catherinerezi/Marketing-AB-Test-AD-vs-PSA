@@ -82,39 +82,53 @@ def safe_read_csv(path_or_buf):
     return pd.read_csv(path_or_buf)
 
 @st.cache_data(show_spinner=True)
+@st.cache_data(show_spinner=True)
 def load_repo_csv(filename="marketing_AB.csv"):
     """
-    Robust loader for Streamlit Cloud:
-    - cek dari CWD (seringnya /app) lalu beberapa parent folder
-    - cek kandidat folder umum: raw_data/, data/, dataset(s)/
-    - fallback rglob untuk mencari file di seluruh repo
+    Safe loader for Streamlit Cloud:
+    - Cari repo_root dengan marker file (requirements.txt / README.md / .git)
+    - Hanya cek kandidat path yang masuk akal
+    - Tidak rglob dari '/' (biar tidak PermissionError)
     """
     cwd = Path.cwd().resolve()
-    roots = [cwd] + list(cwd.parents)[:6]
 
-    candidates = []
-    for r in roots:
-        candidates.extend([
-            r / filename,
-            r / "raw_data" / filename,
-            r / "data" / filename,
-            r / "dataset" / filename,
-            r / "datasets" / filename,
-            r / "app" / filename,
-            r / "app" / "raw_data" / filename,
-        ])
+    def find_repo_root(start: Path) -> Path:
+        markers = {"requirements.txt", "README.md", ".git"}
+        for p in [start] + list(start.parents):
+            try:
+                # kalau ada salah satu marker, anggap ini root repo
+                if any((p / m).exists() for m in markers):
+                    return p
+            except PermissionError:
+                continue
+        # fallback: paling atas yang masih di bawah /mount/src (umumnya Streamlit Cloud)
+        for p in [start] + list(start.parents):
+            if "mount/src" in str(p).replace("\\", "/"):
+                return p
+        return start
+
+    repo_root = find_repo_root(cwd)
+
+    # Kandidat lokasi file yang kamu pakai (dari screenshot: raw_data/marketing_AB.csv)
+    candidates = [
+        repo_root / filename,
+        repo_root / "raw_data" / filename,
+        repo_root / "data" / filename,
+        repo_root / "dataset" / filename,
+        repo_root / "datasets" / filename,
+        repo_root / "app" / filename,
+        repo_root / "app" / "raw_data" / filename,
+    ]
 
     for p in candidates:
-        if p.exists():
-            return pd.read_csv(p), str(p), str(cwd)
+        try:
+            if p.exists():
+                return pd.read_csv(p), str(p), str(cwd), str(repo_root)
+        except PermissionError:
+            # skip path yang tidak boleh diakses
+            continue
 
-    # fallback: cari rekursif dari root terdalam yang kita punya
-    top = roots[-1]
-    for p in top.rglob(filename):
-        if p.is_file():
-            return pd.read_csv(p), str(p), str(cwd)
-
-    return None, None, str(cwd)
+    return None, None, str(cwd), str(repo_root)
 
 @st.cache_data(show_spinner=True)
 def load_from_url(url: str):
@@ -213,17 +227,19 @@ if mode == "Upload CSV":
     df_raw = safe_read_csv(uploaded)
 
 elif mode == "Baca file repo (marketing_AB.csv)":
-    df_raw, found_path, cwd = load_repo_csv("marketing_AB.csv")
+    df_raw, found_path, cwd, repo_root = load_repo_csv("marketing_AB.csv")
     st.sidebar.write("CWD:", cwd)
+    st.sidebar.write("Repo root:", repo_root)
+
     if df_raw is None:
         st.error(
-            "CSV tidak ditemukan di repo.\n\n"
-            "✅ Pastikan file sudah COMMIT & PUSH dan ada di salah satu lokasi ini:\n"
+            "CSV tidak ditemukan.\n\n"
+            "Pastikan file ada di salah satu lokasi:\n"
             "- marketing_AB.csv (root)\n"
-            "- raw_data/marketing_AB.csv\n\n"
-            "Tip: Streamlit Cloud → Manage app → Reboot app / Clear cache."
+            "- raw_data/marketing_AB.csv\n"
         )
         st.stop()
+
     st.sidebar.success(f"Loaded from: {found_path}")
 
 else:  # URL

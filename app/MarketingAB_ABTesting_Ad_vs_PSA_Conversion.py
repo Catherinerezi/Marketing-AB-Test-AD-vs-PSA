@@ -76,10 +76,31 @@ def safe_read_csv(path_or_buf):
     return pd.read_csv(path_or_buf)
 
 @st.cache_data(show_spinner=True)
-def load_local_if_exists(fname="marketing_AB.csv"):
-    if os.path.exists(fname):
-        return pd.read_csv(fname)
-    return None
+def load_repo_csv():
+    """
+    Cari CSV di beberapa kandidat path:
+    - root repo: marketing_AB.csv
+    - raw_data/marketing_AB.csv
+    - folder yang sama dengan file app
+    - parent folder dari app (repo root jika struktur: repo/app/app.py)
+    """
+    script_path = Path(__file__).resolve()
+    # Jika file app ada di folder "app", maka repo root = parent dari folder app
+    repo_root = script_path.parents[1] if script_path.parent.name == "app" else script_path.parent
+
+    candidates = [
+        repo_root / "marketing_AB.csv",
+        repo_root / "raw_data" / "marketing_AB.csv",
+        script_path.parent / "marketing_AB.csv",
+        script_path.parent / "raw_data" / "marketing_AB.csv",
+    ]
+
+    for p in candidates:
+        if p.exists():
+            return pd.read_csv(p), str(p)
+
+    return None, None
+
 
 @st.cache_data(show_spinner=True)
 def load_from_url(url: str):
@@ -163,7 +184,7 @@ if mode == "Upload CSV":
     df_raw = safe_read_csv(uploaded)
 
 elif mode == "Baca file repo (marketing_AB.csv)":
-    df_raw = load_local_if_exists("marketing_AB.csv")
+    df_raw, found_path = load_repo_csv()
     if df_raw is None:
         st.error(
             "File 'marketing_AB.csv' tidak ditemukan di root repo.\n\n"
@@ -173,6 +194,7 @@ elif mode == "Baca file repo (marketing_AB.csv)":
             "- Gunakan 'URL CSV (raw)'."
         )
         st.stop()
+    st.sidebar.success(f"Loaded from: {found_path}")
 
 else:
     if not url_in:

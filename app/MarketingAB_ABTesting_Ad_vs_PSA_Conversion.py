@@ -7,12 +7,11 @@ Streamlit app for:
 - EDA (conversion by day/hour, total ads distribution)
 - Statistical tests (two-proportion z-test + chi-square + Welch t-test)
 - Effect size (Cohen's h) + confidence intervals
-- Power / sample size estimation (NormalIndPower)
+- Power / sample size estimation (NormalIndPower; fallback if statsmodels missing)
 - Randomization / permutation test simulation
 - Altair-only visualizations (fully Altair)
 """
 
-import os
 import math
 import numpy as np
 import pandas as pd
@@ -20,10 +19,21 @@ import altair as alt
 import streamlit as st
 
 from scipy import stats
-from statsmodels.stats.power import NormalIndPower
 from pathlib import Path
 
+# -----------------------
+# Optional statsmodels
+# -----------------------
+has_sm = False
+try:
+    from statsmodels.stats.power import NormalIndPower
+    has_sm = True
+except Exception:
+    has_sm = False
+
+# -----------------------
 # Streamlit config
+# -----------------------
 st.set_page_config(
     page_title="A/B Testing Conversion — Ad vs PSA",
     layout="wide",
@@ -32,28 +42,23 @@ st.set_page_config(
 st.title("📣 A/B Testing: Conversion Rate — 'ad' vs 'psa'")
 st.caption("Dataset: marketing_AB.csv | Fokus: perbedaan conversion rate (converted) antara grup 'ad' dan 'psa'.")
 
-# Altair settings (safe for aggregated data)
 alt.data_transformers.disable_max_rows()
 
+# -----------------------
 # Helpers
+# -----------------------
 def cohen_h(p1: float, p2: float) -> float:
-    """Cohen's h for two proportions."""
     p1 = np.clip(p1, 1e-12, 1 - 1e-12)
     p2 = np.clip(p2, 1e-12, 1 - 1e-12)
     return 2 * np.arcsin(np.sqrt(p1)) - 2 * np.arcsin(np.sqrt(p2))
 
 def wald_ci_diff(p1, n1, p2, n2, alpha=0.05):
-    """Wald CI for difference in proportions (p1 - p2)."""
     diff = p1 - p2
     se = np.sqrt((p1 * (1 - p1) / n1) + (p2 * (1 - p2) / n2))
     z = stats.norm.ppf(1 - alpha / 2)
     return diff - z * se, diff + z * se
 
 def two_prop_ztest(x1, n1, x2, n2, alternative="two-sided"):
-    """
-    Two-proportion z-test (manual).
-    alternative: "two-sided", "larger" (p1>p2), "smaller" (p1<p2)
-    """
     p1 = x1 / n1
     p2 = x2 / n2
     p_pool = (x1 + x2) / (n1 + n2)
@@ -77,38 +82,45 @@ def safe_read_csv(path_or_buf):
     return pd.read_csv(path_or_buf)
 
 @st.cache_data(show_spinner=True)
-def load_repo_csv():
+def load_repo_csv(filename="marketing_AB.csv"):
     """
-    Cari CSV di beberapa kandidat path:
-    - root repo: marketing_AB.csv
-    - raw_data/marketing_AB.csv
-    - folder yang sama dengan file app
-    - parent folder dari app (repo root jika struktur: repo/app/app.py)
+    Robust loader for Streamlit Cloud:
+    - cek dari CWD (seringnya /app) lalu beberapa parent folder
+    - cek kandidat folder umum: raw_data/, data/, dataset(s)/
+    - fallback rglob untuk mencari file di seluruh repo
     """
-    script_path = Path(__file__).resolve()
-    # Jika file app ada di folder "app", maka repo root = parent dari folder app
-    repo_root = script_path.parents[1] if script_path.parent.name == "app" else script_path.parent
+    cwd = Path.cwd().resolve()
+    roots = [cwd] + list(cwd.parents)[:6]
 
-    candidates = [
-        repo_root / "marketing_AB.csv",
-        repo_root / "raw_data" / "marketing_AB.csv",
-        script_path.parent / "marketing_AB.csv",
-        script_path.parent / "raw_data" / "marketing_AB.csv",
-    ]
+    candidates = []
+    for r in roots:
+        candidates.extend([
+            r / filename,
+            r / "raw_data" / filename,
+            r / "data" / filename,
+            r / "dataset" / filename,
+            r / "datasets" / filename,
+            r / "app" / filename,
+            r / "app" / "raw_data" / filename,
+        ])
 
     for p in candidates:
         if p.exists():
-            return pd.read_csv(p), str(p)
+            return pd.read_csv(p), str(p), str(cwd)
 
-    return None, None
+    # fallback: cari rekursif dari root terdalam yang kita punya
+    top = roots[-1]
+    for p in top.rglob(filename):
+        if p.is_file():
+            return pd.read_csv(p), str(p), str(cwd)
 
+    return None, None, str(cwd)
 
 @st.cache_data(show_spinner=True)
 def load_from_url(url: str):
     return pd.read_csv(url)
 
 def standardize_cols(df: pd.DataFrame) -> pd.DataFrame:
-    # keep original columns, but normalize whitespace for robustness
     df = df.copy()
     df.columns = [c.strip() for c in df.columns]
     return df
@@ -118,13 +130,27 @@ def ensure_converted_numeric(df: pd.DataFrame, col="converted") -> pd.DataFrame:
     if df[col].dtype == bool:
         df[col] = df[col].astype(int)
     else:
-        # if already 0/1 or True/False strings
         if df[col].dtype == object:
-            df[col] = df[col].astype(str).str.lower().map({"true": 1, "false": 0})
+            s = df[col].astype(str).str.lower().str.strip()
+            df[col] = s.map({"true": 1, "false": 0})
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
-# Sidebar: data loading
+def approx_n_per_group_from_h(effect_h: float, alpha: float, power: float, two_sided: bool = True) -> int:
+    """
+    Approx sample size per group for two-sample proportions using Cohen's h,
+    equal sizes, normal approximation:
+        n ≈ 2 * (z_alpha + z_power)^2 / h^2
+    """
+    h = max(1e-12, float(abs(effect_h)))
+    z_alpha = stats.norm.ppf(1 - alpha / 2) if two_sided else stats.norm.ppf(1 - alpha)
+    z_power = stats.norm.ppf(power)
+    n = 2.0 * ((z_alpha + z_power) ** 2) / (h ** 2)
+    return int(np.ceil(n))
+
+# -----------------------
+# Sidebar
+# -----------------------
 with st.sidebar:
     st.header("⚙️ Pengaturan")
     st.subheader("Data source")
@@ -142,7 +168,7 @@ with st.sidebar:
         uploaded = st.file_uploader("Upload marketing_AB.csv", type=["csv"])
     elif mode == "URL CSV (raw)":
         url_in = st.text_input(
-            "Tempel URL CSV (contoh: raw GitHub / public link)",
+            "Tempel URL CSV (raw GitHub/public link)",
             value="",
             placeholder="https://.../marketing_AB.csv",
         )
@@ -175,7 +201,9 @@ with st.sidebar:
     st.subheader("Permutation test")
     n_perm = st.slider("Jumlah permutasi (simulasi)", 200, 3000, 800, 100)
 
+# -----------------------
 # Load data
+# -----------------------
 df_raw = None
 
 if mode == "Upload CSV":
@@ -185,19 +213,20 @@ if mode == "Upload CSV":
     df_raw = safe_read_csv(uploaded)
 
 elif mode == "Baca file repo (marketing_AB.csv)":
-    df_raw, found_path = load_repo_csv()
+    df_raw, found_path, cwd = load_repo_csv("marketing_AB.csv")
+    st.sidebar.write("CWD:", cwd)
     if df_raw is None:
         st.error(
-            "File 'marketing_AB.csv' tidak ditemukan di root repo.\n\n"
-            "✅ Solusi cepat:\n"
-            "- Letakkan marketing_AB.csv di root repo, atau\n"
-            "- Gunakan 'Upload CSV', atau\n"
-            "- Gunakan 'URL CSV (raw)'."
+            "CSV tidak ditemukan di repo.\n\n"
+            "✅ Pastikan file sudah COMMIT & PUSH dan ada di salah satu lokasi ini:\n"
+            "- marketing_AB.csv (root)\n"
+            "- raw_data/marketing_AB.csv\n\n"
+            "Tip: Streamlit Cloud → Manage app → Reboot app / Clear cache."
         )
         st.stop()
     st.sidebar.success(f"Loaded from: {found_path}")
 
-else:
+else:  # URL
     if not url_in:
         st.info("Masukkan URL CSV (raw) untuk memulai.")
         st.stop()
@@ -209,7 +238,9 @@ else:
 
 df = standardize_cols(df_raw)
 
+# -----------------------
 # Column mapping
+# -----------------------
 COL_GROUP = "test group"
 COL_CONV = "converted"
 COL_TOTAL_ADS = "total ads"
@@ -225,7 +256,6 @@ if missing:
 
 df = ensure_converted_numeric(df, COL_CONV)
 
-# Basic cleaning for common issues
 df[COL_GROUP] = df[COL_GROUP].astype(str).str.strip().str.lower()
 
 valid_groups = set(df[COL_GROUP].dropna().unique().tolist())
@@ -233,7 +263,9 @@ if not {"ad", "psa"}.issubset(valid_groups):
     st.error(f"Grup harus mengandung 'ad' dan 'psa'. Ditemukan: {sorted(list(valid_groups))}")
     st.stop()
 
-# Layout: Overview
+# -----------------------
+# Layout
+# -----------------------
 with st.expander("🎯 Objective & Hypothesis", expanded=True):
     st.markdown(
         f"""
@@ -244,7 +276,7 @@ Menguji apakah terdapat perbedaan signifikan pada **conversion rate** (`{COL_CON
 
 **Hipotesis**
 - **H0**: Tidak ada perbedaan conversion rate antara `ad` dan `psa`
-- **H1**: Ada perbedaan conversion rate antara `ad` dan `psa` (atau sesuai pilihan alternative di sidebar)
+- **H1**: Ada perbedaan conversion rate antara `ad` dan `psa` (sesuai alternative di sidebar)
 """
     )
 
@@ -252,7 +284,9 @@ tab_overview, tab_eda, tab_stats, tab_perm = st.tabs(
     ["📌 Overview Data", "🔎 EDA (Altair)", "🧪 Statistik & Power", "🎲 Permutation Test"]
 )
 
-# Overview tab
+# -----------------------
+# Overview
+# -----------------------
 with tab_overview:
     c1, c2, c3 = st.columns([2, 2, 2])
     with c1:
@@ -283,7 +317,9 @@ with tab_overview:
     )
     st.altair_chart(chart_grp, use_container_width=True)
 
-# EDA tab
+# -----------------------
+# EDA
+# -----------------------
 with tab_eda:
     st.subheader("Ringkasan conversion rate per grup")
 
@@ -304,7 +340,6 @@ with tab_eda:
             use_container_width=True,
         )
 
-        # KPI cards
         p_ad = float(summary.loc[summary[COL_GROUP] == "ad", "conversion_rate"].iat[0])
         p_psa = float(summary.loc[summary[COL_GROUP] == "psa", "conversion_rate"].iat[0])
         lift_abs = (p_ad - p_psa)
@@ -336,14 +371,12 @@ with tab_eda:
 
     st.divider()
 
-    # Optional dimensions exist
     has_day = COL_DAY in df.columns
     has_hour = COL_HOUR in df.columns
     has_total_ads = COL_TOTAL_ADS in df.columns
 
     c4, c5 = st.columns(2)
 
-    # Conversion by day
     with c4:
         st.subheader("Conversion rate by day (most ads day)")
         if has_day:
@@ -375,7 +408,6 @@ with tab_eda:
         else:
             st.info(f"Kolom '{COL_DAY}' tidak ada di dataset.")
 
-    # Conversion by hour
     with c5:
         st.subheader("Conversion rate by hour (most ads hour)")
         if has_hour:
@@ -409,15 +441,10 @@ with tab_eda:
 
     st.divider()
 
-    # Total ads distribution and relationship
     if has_total_ads:
         st.subheader("Total ads distribution & conversion relationship (sampled)")
 
-        # Sample for raw plots
-        df_sample = df.sample(
-            n=min(max_points, len(df)),
-            random_state=42
-        ).copy()
+        df_sample = df.sample(n=min(max_points, len(df)), random_state=42).copy()
 
         c6, c7 = st.columns(2)
 
@@ -437,8 +464,7 @@ with tab_eda:
             st.altair_chart(hist_ads, use_container_width=True)
 
         with c7:
-            # conversion rate by total ads bins (aggregated)
-            bins = pd.cut(df[COL_TOTAL_ADS], bins=30)  # full aggregation
+            bins = pd.cut(df[COL_TOTAL_ADS], bins=30)
             ads_bin_agg = (
                 df.assign(total_ads_bin=bins)
                 .groupby([COL_GROUP, "total_ads_bin"])[COL_CONV]
@@ -469,18 +495,18 @@ with tab_eda:
     else:
         st.info(f"Kolom '{COL_TOTAL_ADS}' tidak ada di dataset, jadi chart 'total ads' dilewati.")
 
-# Stats tab
+# -----------------------
+# Stats & Power
+# -----------------------
 with tab_stats:
     st.subheader("Uji statistik: perbedaan conversion rate (ad vs psa)")
 
-    # Counts
     ad = df[df[COL_GROUP] == "ad"][COL_CONV]
     psa = df[df[COL_GROUP] == "psa"][COL_CONV]
 
     n1 = int(ad.shape[0]); x1 = int(ad.sum()); p1 = x1 / n1
     n2 = int(psa.shape[0]); x2 = int(psa.sum()); p2 = x2 / n2
 
-    # Z-test
     alt_map = {
         "two-sided (beda)": "two-sided",
         "larger (ad > psa)": "larger",
@@ -489,14 +515,11 @@ with tab_stats:
     alternative = alt_map[alt_choice]
     z, pz = two_prop_ztest(x1, n1, x2, n2, alternative=alternative)
 
-    # Chi-square test
     table = np.array([[x1, n1 - x1], [x2, n2 - x2]])
     chi2, pchi, dof, exp = stats.chi2_contingency(table, correction=False)
 
-    # Welch t-test (mirroring notebook)
     t_stat, pt = stats.ttest_ind(ad, psa, equal_var=False)
 
-    # CI + effect size
     ci_lo, ci_hi = wald_ci_diff(p1, n1, p2, n2, alpha=alpha)
     h = cohen_h(p1, p2)
 
@@ -522,18 +545,9 @@ with tab_stats:
         f"**[{ci_lo*100:.3f}, {ci_hi*100:.3f}] pp**"
     )
 
-    # Visualize diff + CI
-    ci_df = pd.DataFrame(
-        {
-            "metric": ["Diff (ad-psa)"],
-            "diff": [p1 - p2],
-            "ci_lo": [ci_lo],
-            "ci_hi": [ci_hi],
-        }
-    )
+    ci_df = pd.DataFrame({"metric": ["Diff (ad-psa)"], "diff": [p1 - p2], "ci_lo": [ci_lo], "ci_hi": [ci_hi]})
     ci_chart = (
-        alt.Chart(ci_df)
-        .mark_point(filled=True, size=120)
+        alt.Chart(ci_df).mark_point(filled=True, size=120)
         .encode(
             x=alt.X("diff:Q", title="Difference in conversion rate (ad - psa)"),
             y=alt.Y("metric:N", title=""),
@@ -545,16 +559,9 @@ with tab_stats:
         )
         .properties(height=120, title="Difference & CI")
     )
-
-    rule = (
-        alt.Chart(ci_df)
-        .mark_rule()
-        .encode(x="ci_lo:Q", x2="ci_hi:Q", y="metric:N")
-    )
-
+    rule = alt.Chart(ci_df).mark_rule().encode(x="ci_lo:Q", x2="ci_hi:Q", y="metric:N")
     st.altair_chart(rule + ci_chart, use_container_width=True)
 
-    # Interpretation block
     st.markdown("#### Interpretasi")
     if np.isfinite(pz) and pz < alpha:
         st.success(
@@ -568,46 +575,45 @@ with tab_stats:
         )
 
     st.divider()
-    st.subheader("Power / sample size (NormalIndPower, Cohen's h)")
+    st.subheader("Power / sample size (Cohen's h)")
 
-    analysis = NormalIndPower()
-    try:
-        n_per_group = analysis.solve_power(
-            effect_size=h_input,
-            alpha=alpha,
-            power=target_power,
-            ratio=1.0,
-            alternative="two-sided" if alternative == "two-sided" else "larger",
-        )
-        st.write(
-            f"Perkiraan minimum **sample size per grup** untuk effect size (Cohen's h) = **{h_input:.2f}**, "
-            f"alpha = **{alpha}**, power = **{target_power:.2f}**:"
-        )
-        st.metric("n per group (approx)", f"{int(math.ceil(n_per_group))}")
-    except Exception as e:
-        st.error(f"Gagal menghitung sample size. Error: {e}")
+    two_sided = (alternative == "two-sided")
+    if has_sm:
+        analysis = NormalIndPower()
+        try:
+            n_per_group = analysis.solve_power(
+                effect_size=h_input,
+                alpha=alpha,
+                power=target_power,
+                ratio=1.0,
+                alternative="two-sided" if two_sided else "larger",
+            )
+            st.write(f"Metode: **statsmodels NormalIndPower**")
+            st.metric("n per group (approx)", f"{int(math.ceil(n_per_group))}")
+        except Exception as e:
+            st.error(f"Gagal menghitung sample size (statsmodels). Error: {e}")
+    else:
+        n_est = approx_n_per_group_from_h(h_input, alpha, target_power, two_sided=two_sided)
+        st.write("Metode: **fallback manual (normal approximation)** (statsmodels tidak tersedia)")
+        st.metric("n per group (approx)", f"{n_est}")
 
-    st.caption(
-        "Catatan: Cohen's h = 0.2 (small), 0.5 (medium), 0.8 (large). "
-        "Semakin kecil effect size, semakin besar sample yang dibutuhkan."
-    )
+    st.caption("Catatan: Cohen's h = 0.2 (small), 0.5 (medium), 0.8 (large). Semakin kecil effect size, semakin besar sample dibutuhkan.")
 
-# Permutation test tab
+# -----------------------
+# Permutation test
+# -----------------------
 with tab_perm:
     st.subheader("Permutation / randomization test (simulasi under H0)")
 
-    # Observed diff
     obs_diff = p1 - p2
 
     conv = df[COL_CONV].to_numpy()
     grp = df[COL_GROUP].to_numpy()
 
-    # indices for ad/psa sizes
     n_ad = int((grp == "ad").sum())
     n_psa = int((grp == "psa").sum())
 
     rng = np.random.default_rng(42)
-
     diffs = np.empty(n_perm, dtype=float)
 
     for i in range(n_perm):
@@ -616,7 +622,6 @@ with tab_perm:
         p_psa_perm = perm[n_ad:n_ad + n_psa].mean()
         diffs[i] = p_ad_perm - p_psa_perm
 
-    # two-sided permutation p-value around 0
     if alternative == "two-sided":
         p_perm = (np.abs(diffs) >= abs(obs_diff)).mean()
     elif alternative == "larger":
@@ -627,7 +632,6 @@ with tab_perm:
     st.metric("Observed diff (ad - psa)", f"{obs_diff*100:.3f} pp")
     st.metric("Permutation p-value", f"{p_perm:.6f}")
 
-    # Plot distribution
     perm_df = pd.DataFrame({"diff": diffs})
     vline_df = pd.DataFrame({"x": [obs_diff]})
 
@@ -643,39 +647,31 @@ with tab_perm:
         .interactive()
     )
 
-    vline = (
-        alt.Chart(vline_df)
-        .mark_rule(strokeWidth=3)
-        .encode(x="x:Q")
-    )
-
+    vline = alt.Chart(vline_df).mark_rule(strokeWidth=3).encode(x="x:Q")
     st.altair_chart(hist + vline, use_container_width=True)
 
-    st.caption(
-        "Histogram menunjukkan distribusi selisih conversion (ad-psa) ketika assignment dianggap acak (H0). "
-        "Garis vertikal = observed diff dari data asli."
-    )
+    st.caption("Histogram = distribusi selisih conversion (ad-psa) saat assignment acak (H0). Garis = observed diff.")
 
+# -----------------------
 # Footer recommendation
+# -----------------------
 st.divider()
 st.subheader("✅ Rekomendasi singkat")
 
-# Simple decision using z-test by default
 if np.isfinite(pz) and pz < alpha and (p1 > p2):
     st.success(
         f"Grup **'ad'** unggul: CR_ad={p1*100:.3f}% vs CR_psa={p2*100:.3f}% "
-        f"(diff={obs_diff*100:.3f} pp). Secara statistik signifikan pada alpha={alpha}."
+        f"(diff={obs_diff*100:.3f} pp). Signifikan pada alpha={alpha}."
     )
 elif np.isfinite(pz) and pz < alpha and (p1 < p2):
     st.success(
         f"Grup **'psa'** unggul: CR_psa={p2*100:.3f}% vs CR_ad={p1*100:.3f}% "
-        f"(diff={obs_diff*100:.3f} pp). Secara statistik signifikan pada alpha={alpha}."
+        f"(diff={obs_diff*100:.3f} pp). Signifikan pada alpha={alpha}."
     )
 else:
     st.info(
         f"Belum ada bukti signifikan (z-test p={pz:.6f} pada alpha={alpha}). "
-        "Pertimbangkan: perpanjang durasi eksperimen, cek segmentasi (day/hour/total ads), "
-        "atau desain ulang target effect size & power."
+        "Pertimbangkan perpanjang durasi eksperimen / cek segmentasi / redesign target effect & power."
     )
 
-st.caption("Tip deploy: pastikan `streamlit`, `pandas`, `numpy`, `scipy`, `statsmodels`, `altair` ada di requirements.txt.")
+st.caption("Tip deploy: pastikan `streamlit`, `pandas`, `numpy`, `scipy`, `altair` (dan `statsmodels` opsional) ada di requirements.txt.")

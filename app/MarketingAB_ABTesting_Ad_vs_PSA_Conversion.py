@@ -33,6 +33,49 @@ except Exception:
 st.set_page_config(page_title="A/B Testing Conversion — Ad vs PSA", layout="wide")
 st.title("📣 A/B Testing: Conversion Rate — 'ad' vs 'psa'")
 st.caption("Dataset: marketing_AB.csv | Fokus: perbedaan conversion rate (converted) antara grup 'ad' dan 'psa'.")
+with st.expander("📌 Penjelasan singkat: apa itu 'ad' vs 'psa' & cara baca hasil", expanded=True):
+    st.markdown(
+        f"""
+### 1) Apa itu `ad` vs `psa`?
+Di dataset ini ada kolom **`{COL_GROUP}`** (group assignment):
+- **`ad`** = user melihat **iklan (advertisement)** → biasanya dianggap **treatment**
+- **`psa`** = user melihat **PSA (Public Service Announcement)** / versi **non-iklan** → biasanya dianggap **control**
+
+Kita membandingkan apakah exposure **iklan** menaikkan **conversion** dibanding PSA.
+
+---
+
+### 2) Apa yang disebut “conversion” di sini?
+Kolom **`{COL_CONV}`** adalah label konversi:
+- **1** = user **converted**
+- **0** = user **tidak** converted
+
+**Conversion Rate (CR)** per group:
+- **CR(ad)** = jumlah converted di group ad / total user di group ad  
+- **CR(psa)** = jumlah converted di group psa / total user di group psa  
+
+---
+
+### 3) Output yang harus kamu lihat
+Di tab statistik kamu akan lihat:
+- **CR(ad)** dan **CR(psa)**
+- **Diff (ad - psa)** dalam “pp” (percentage points)
+  - contoh: diff = 0.20 pp artinya CR(ad) lebih tinggi 0.20% poin dari CR(psa)
+- **P-value** (z-test / chi-square / t-test):
+  - kalau **p-value < alpha**, berarti perbedaannya **signifikan**
+- **Confidence Interval (CI)** untuk diff:
+  - kalau CI **tidak melewati 0**, biasanya konsisten dengan signifikan
+
+---
+
+### 4) EDA tambahan (opsional)
+Kalau kolom-kolom ini ada di dataset, app akan bikin chart:
+- **`{COL_DAY}`**: tren conversion per hari
+- **`{COL_HOUR}`**: tren conversion per jam
+- **`{COL_TOTAL_ADS}`**: distribusi total ads & relasi dengan conversion
+
+"""
+    )
 alt.data_transformers.disable_max_rows()
 
 # Helpers

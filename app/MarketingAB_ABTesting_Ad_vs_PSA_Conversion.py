@@ -9,7 +9,7 @@ Streamlit app for:
 - Effect size (Cohen's h) + confidence intervals
 - Power / sample size estimation (statsmodels optional; fallback if missing)
 - Randomization / permutation test simulation
-- Altair-only visualizations
+- Altair visualizations
 """
 
 import math
@@ -21,18 +21,26 @@ import altair as alt
 import streamlit as st
 from scipy import stats
 
-# Optional statsmodels
 HAS_STATSMODELS = False
 try:
-    from statsmodels.stats.power import NormalIndPower 
+    from statsmodels.stats.power import NormalIndPower
     HAS_STATSMODELS = True
 except Exception:
     HAS_STATSMODELS = False
+
+# Column mapping
+COL_GROUP = "test group"
+COL_CONV = "converted"
+COL_TOTAL_ADS = "total ads"
+COL_DAY = "most ads day"
+COL_HOUR = "most ads hour"
+COL_USER = "user id"
 
 # Streamlit config
 st.set_page_config(page_title="A/B Testing Conversion — Ad vs PSA", layout="wide")
 st.title("📣 A/B Testing: Conversion Rate — 'ad' vs 'psa'")
 st.caption("Dataset: marketing_AB.csv | Fokus: perbedaan conversion rate (converted) antara grup 'ad' dan 'psa'.")
+
 with st.expander("📌 Penjelasan singkat: apa itu 'ad' vs 'psa' & cara baca hasil", expanded=True):
     st.markdown(
         f"""
@@ -73,9 +81,9 @@ Kalau kolom-kolom ini ada di dataset, app akan bikin chart:
 - **`{COL_DAY}`**: tren conversion per hari
 - **`{COL_HOUR}`**: tren conversion per jam
 - **`{COL_TOTAL_ADS}`**: distribusi total ads & relasi dengan conversion
-
 """
     )
+
 alt.data_transformers.disable_max_rows()
 
 # Helpers

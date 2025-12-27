@@ -21,27 +21,21 @@ import altair as alt
 import streamlit as st
 from scipy import stats
 
-# -----------------------
 # Optional statsmodels
-# -----------------------
 HAS_STATSMODELS = False
 try:
-    from statsmodels.stats.power import NormalIndPower  # type: ignore
+    from statsmodels.stats.power import NormalIndPower 
     HAS_STATSMODELS = True
 except Exception:
     HAS_STATSMODELS = False
 
-# -----------------------
 # Streamlit config
-# -----------------------
 st.set_page_config(page_title="A/B Testing Conversion — Ad vs PSA", layout="wide")
 st.title("📣 A/B Testing: Conversion Rate — 'ad' vs 'psa'")
 st.caption("Dataset: marketing_AB.csv | Fokus: perbedaan conversion rate (converted) antara grup 'ad' dan 'psa'.")
 alt.data_transformers.disable_max_rows()
 
-# -----------------------
 # Helpers
-# -----------------------
 def cohen_h(p1: float, p2: float) -> float:
     p1 = np.clip(p1, 1e-12, 1 - 1e-12)
     p2 = np.clip(p2, 1e-12, 1 - 1e-12)
@@ -128,7 +122,7 @@ def load_repo_csv_candidates(filename="marketing_AB.csv"):
     Kita cari repo_root dari __file__, lalu cek kandidat path yang aman.
     """
     script_path = Path(__file__).resolve()
-    repo_root = script_path.parents[1]  # .../<repo>
+    repo_root = script_path.parents[1]
 
     candidates = [
         repo_root / filename,
@@ -149,14 +143,13 @@ def load_repo_csv_candidates(filename="marketing_AB.csv"):
                 found.append(p)
         except Exception:
             continue
-
-    # juga list csv di repo_root (biar user bisa pilih), tapi tetap aman: cuma di repo_root
+            
     csvs = []
     try:
         for f in repo_root.rglob("*.csv"):
             if f.is_file():
                 rel = str(f.relative_to(repo_root))
-                # skip folder yang bikin noise
+                # skip noise folder
                 if any(part.startswith(".") for part in f.parts):
                     continue
                 if "venv" in rel or "__pycache__" in rel:
@@ -168,9 +161,7 @@ def load_repo_csv_candidates(filename="marketing_AB.csv"):
     csvs = sorted(set(csvs))
     return str(script_path), str(repo_root), [str(x) for x in found], csvs
 
-# -----------------------
 # Sidebar
-# -----------------------
 with st.sidebar:
     st.header("⚙️ Pengaturan")
     st.subheader("Data source")
@@ -221,9 +212,7 @@ with st.sidebar:
     st.subheader("Permutation test")
     n_perm = st.slider("Jumlah permutasi (simulasi)", 200, 3000, 800, 100)
 
-# -----------------------
 # Load data
-# -----------------------
 df_raw = None
 found_path = None
 
@@ -298,9 +287,7 @@ else:  # Baca file repo
 
 df = standardize_cols(df_raw)
 
-# -----------------------
 # Column mapping & cleaning
-# -----------------------
 COL_GROUP = "test group"
 COL_CONV = "converted"
 COL_TOTAL_ADS = "total ads"
@@ -330,9 +317,7 @@ n1 = int(ad_vec.shape[0]); x1 = int(ad_vec.sum()); p1 = x1 / n1
 n2 = int(psa_vec.shape[0]); x2 = int(psa_vec.sum()); p2 = x2 / n2
 obs_diff = p1 - p2
 
-# -----------------------
 # Layout
-# -----------------------
 with st.expander("🎯 Objective & Hypothesis", expanded=True):
     st.markdown(
         f"""
@@ -351,9 +336,7 @@ tab_overview, tab_eda, tab_stats, tab_perm = st.tabs(
     ["📌 Overview Data", "🔎 EDA (Altair)", "🧪 Statistik & Power", "🎲 Permutation Test"]
 )
 
-# -----------------------
 # Overview
-# -----------------------
 with tab_overview:
     c1, c2, c3 = st.columns([2, 2, 2])
     with c1:
@@ -385,9 +368,7 @@ with tab_overview:
     )
     st.altair_chart(chart_grp, use_container_width=True)
 
-# -----------------------
 # EDA
-# -----------------------
 with tab_eda:
     st.subheader("Ringkasan conversion rate per grup")
 
@@ -565,9 +546,7 @@ with tab_eda:
     else:
         st.info(f"Kolom '{COL_TOTAL_ADS}' tidak ada di dataset, jadi chart 'total ads' dilewati.")
 
-# -----------------------
 # Stats & Power
-# -----------------------
 with tab_stats:
     st.subheader("Uji statistik: perbedaan conversion rate (ad vs psa)")
 
@@ -668,9 +647,7 @@ with tab_stats:
         "Semakin kecil effect size, semakin besar sample dibutuhkan."
     )
 
-# -----------------------
 # Permutation test
-# -----------------------
 with tab_perm:
     st.subheader("Permutation / randomization test (simulasi under H0)")
 
@@ -719,9 +696,7 @@ with tab_perm:
 
     st.caption("Histogram = distribusi selisih conversion (ad-psa) saat assignment acak (H0). Garis = observed diff.")
 
-# -----------------------
 # Footer recommendation
-# -----------------------
 st.divider()
 st.subheader("✅ Rekomendasi singkat")
 
@@ -740,8 +715,3 @@ else:
         f"Belum ada bukti signifikan (z-test p={pz:.6f} pada alpha={alpha}). "
         "Pertimbangkan perpanjang durasi eksperimen / cek segmentasi / redesign target effect & power."
     )
-
-st.caption(
-    "Tip deploy: pastikan `streamlit`, `pandas`, `numpy`, `scipy`, `altair` ada di requirements.txt "
-    "(statsmodels opsional)."
-)

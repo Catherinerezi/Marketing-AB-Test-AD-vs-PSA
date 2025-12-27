@@ -64,7 +64,7 @@ Kolom **`{COL_CONV}`** adalah label konversi:
 
 ---
 
-### 3) Output yang harus kamu lihat
+### 3) Output yang harus diperhatikan
 Di tab statistik kamu akan lihat:
 - **CR(ad)** dan **CR(psa)**
 - **Diff (ad - psa)** dalam “pp” (percentage points)
@@ -73,14 +73,6 @@ Di tab statistik kamu akan lihat:
   - kalau **p-value < alpha**, berarti perbedaannya **signifikan**
 - **Confidence Interval (CI)** untuk diff:
   - kalau CI **tidak melewati 0**, biasanya konsisten dengan signifikan
-
----
-
-### 4) EDA tambahan (opsional)
-Kalau kolom-kolom ini ada di dataset, app akan bikin chart:
-- **`{COL_DAY}`**: tren conversion per hari
-- **`{COL_HOUR}`**: tren conversion per jam
-- **`{COL_TOTAL_ADS}`**: distribusi total ads & relasi dengan conversion
 """
     )
 

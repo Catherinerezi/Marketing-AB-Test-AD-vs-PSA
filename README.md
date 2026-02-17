@@ -54,5 +54,5 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
   - Display dataset shape, data types, and missing percentages.
   - Display group sizes (row counts for ad and psa).
 - Control chart performance
-  - Sample rows for heavy charts when needed to keep the dashboard responsive. <br>
+  - Sample rows for heavy charts when needed to keep the dashboard responsive.  <br>
 **Note:** Exclude duplicate-user validation from the current implementation; omit checks for repeated user id values unless explicitly added.

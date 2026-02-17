@@ -13,6 +13,7 @@ The project focuses on these core tasks:
 The Streamlit app puts all of this into one place—data checks, the main Ad vs PSA comparison, simple charts by day/hour/exposure, reliability checks, and experiment planning, so someone can understand what happened, how sure we should be, and what to do next (keep the ad, improve it, target it, or test longer).
 
 **Two groups explanation:**
+
 In this project, we compare two groups of people:
 - Ad group: people who see an advertisement (test group = ad)
 - PSA group: people who see a normal message, not an ad (test group = psa)

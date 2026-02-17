@@ -42,7 +42,7 @@ Ensure clean, readable columns before comparing results to prevent misleading co
 | `most ads day`  | `text`              | Day with highest exposure  | Use for day-level conversion comparisons (Ad vs PSA).                                 |
 | `most ads hour` | `int` (0–23)        | Hour with highest exposure | Use for hour-level conversion comparisons (Ad vs PSA).                                |
 
-**Apply quality checks and cleaning rules**
+**Apply quality checks and cleaning rules**<br>
 Run A/B comparison, not machine learning, prioritize a clean and fair group comparison.
 - Standardize column names
   - Strip extra spaces from column names to ensure consistent access.

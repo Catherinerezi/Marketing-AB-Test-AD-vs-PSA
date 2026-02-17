@@ -12,12 +12,10 @@ The project focuses on these core tasks:
 
 The Streamlit app puts all of this into one place—data checks, the main Ad vs PSA comparison, simple charts by day/hour/exposure, reliability checks, and experiment planning, so someone can understand what happened, how sure we should be, and what to do next (keep the ad, improve it, target it, or test longer).
 
-**Two groups explanation:**
-
+**Two groups explanation:**<br>
 In this project, we compare two groups of people:
 - Ad group: people who see an advertisement (test group = ad)
-- PSA group: people who see a normal message, not an ad (test group = psa)
-
+- PSA group: people who see a normal message, not an ad (test group = psa)<br>
 Then we look at converted:
 - converted = 1 (True) means the person buys/signs up
 - converted = 0 (False) means the person does not
@@ -56,5 +54,5 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
   - Display dataset shape, data types, and missing percentages.
   - Display group sizes (row counts for ad and psa).
 - Control chart performance
-  - Sample rows for heavy charts when needed to keep the dashboard responsive.
+  - Sample rows for heavy charts when needed to keep the dashboard responsive.<br>
 **Note:** Exclude duplicate-user validation from the current implementation; omit checks for repeated user id values unless explicitly added.

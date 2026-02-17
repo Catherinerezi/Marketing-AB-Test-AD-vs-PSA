@@ -57,3 +57,6 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
   - Sample rows for heavy charts when needed to keep the dashboard responsive.
 
 **Note:** Exclude duplicate-user validation from the current implementation, omit checks for repeated user id values unless explicitly added.
+
+# Attachment
+- [Data Processing](https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/raw-data/marketing_AB.csv)

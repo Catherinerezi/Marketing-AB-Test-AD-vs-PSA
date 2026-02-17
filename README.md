@@ -21,3 +21,40 @@ In this project, we compare two groups of people:
 Then we look at converted:
 - converted = 1 (True) means the person buys/signs up
 - converted = 0 (False) means the person does not
+
+# Understand the Experiment Data (Ad vs PSA)
+
+Treat each row as one person in the test:
+- Identify who appears → user id
+- Identify what was shown → test group (ad or psa)
+- Identify whether conversion happened → converted (yes/no)
+- Measure how many ads were seen → total ads
+- Locate when exposure peaked → most ads day, most ads hour
+Ensure clean, readable columns before comparing results to prevent misleading conclusions.
+
+| Column          | Type (in file)      | Meaning                    | Notes & Handling in the app                                                           |
+| --------------- | ------------------- | -------------------------- | ------------------------------------------------------------------------------------- |
+| `Unnamed: 0`    | `int`               | Row index                  | Treat as a saved index column; exclude from analysis.                                 |
+| `user id`       | `int`               | Person identifier          | Keep for reference; avoid using as a predictive signal (A/B comparison only).         |
+| `test group`    | `text`              | Assigned message group     | Require both `ad` and `psa`; standardize case and spacing to avoid label errors.      |
+| `converted`     | `bool` (True/False) | Conversion outcome         | Convert safely into numeric **0/1** for consistent calculations.                      |
+| `total ads`     | `int`               | Number of ads seen         | Expect wide range (up to **2065** in this file); use binning and sampling for charts. |
+| `most ads day`  | `text`              | Day with highest exposure  | Use for day-level conversion comparisons (Ad vs PSA).                                 |
+| `most ads hour` | `int` (0–23)        | Hour with highest exposure | Use for hour-level conversion comparisons (Ad vs PSA).                                |
+
+**Apply quality checks and cleaning rules**
+Run A/B comparison, not machine learning, prioritize a clean and fair group comparison.
+- Standardize column names
+  - Strip extra spaces from column names to ensure consistent access.
+- Normalize converted
+  - Convert boolean True/False into 1/0.
+  - Convert text-like values such as "true"/"false" or "1"/"0" into numeric form when present.
+- Normalize test group
+  - Trim spaces and convert labels to lowercase.
+  - Stop execution if both ad and psa are not present.
+- Report basic data health
+  - Display dataset shape, data types, and missing percentages.
+  - Display group sizes (row counts for ad and psa).
+- Control chart performance
+  - Sample rows for heavy charts when needed to keep the dashboard responsive.
+**Note:** Exclude duplicate-user validation from the current implementation; omit checks for repeated user id values unless explicitly added.

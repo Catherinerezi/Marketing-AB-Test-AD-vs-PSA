@@ -97,7 +97,3 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by%20Group.png" alt="Visualisasi Perbandingan" width="1000">
 </p>
-
-<p align="center">
-  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Permutation%20histogram.png" alt="Visualisasi Perbandingan" width="1000">
-</p>

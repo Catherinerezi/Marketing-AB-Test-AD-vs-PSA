@@ -60,3 +60,44 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 
 # Attachment
 - [Data Processing](https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/raw-data/marketing_AB.csv)
+
+# What This A/B Dashboard Brings to the Table
+
+## Show usefulness through a “trust + action” view (not just one number)
+
+### Answer the main question clearly
+- Determine whether the Ad group converts more than the PSA group using converted (1 = converts, 0 = does not).
+- Report the result as simple, decision-friendly outputs:
+  - Conversion rate for each group.
+  - The difference between groups (Ad − PSA).
+  - A clear direction: which group performs better.
+ 
+### Check whether the difference is likely real (not just luck)
+- Avoid relying on a single calculation.
+- Validate the group difference using:
+  - Two-proportion z-test.
+  - Chi-square test on the 2×2 conversion table.
+  - Shuffle-based permutation test that simulates “no real effect” and compares against the observed difference.
+- Provide a confidence interval for the conversion-rate difference to show a reasonable range for the uplift.
+
+### Explain when the result changes (simple slices)
+- Break down conversion results by the dataset context columns:
+  - most ads day
+  - most ads hour
+  - total ads (binned)
+- Support practical questions such as:
+  - “Does the gap appear on every day or only certain days?”
+  - “Does the gap change by hour?”
+  - “Do heavier ad exposures behave differently?”
+ 
+### Support experiment planning (power and sample size)
+- Estimate approximate sample size needs based on a chosen effect size and target power.
+- Provide a fallback calculation when optional libraries are unavailable, ensuring planning remains available.
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by%20Group.png" alt="Visualisasi Perbandingan" width="1000">
+</p>
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Permutation%20histogram.png" alt="Visualisasi Perbandingan" width="1000">
+</p>

@@ -97,3 +97,42 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by%20Group.png" alt="Visualisasi Perbandingan" width="1000">
 </p>
+
+## How Big the Problem Is (the shape of conversions & data quality)?
+
+### What needs to be understood about the data?
+- Recognize that marketing results can look “random” because people see ads at different times and in different amounts.
+- Check whether the dataset is clean enough to trust before comparing groups.
+- Confirm whether the Ad group and PSA group have enough data, and note that the group sizes are not balanced (Ad is much larger than PSA).
+
+### How to explore this in practice (based on the dataset + Streamlit app)?
+- Load marketing_AB.csv and confirm the table size (588,101 rows, 7 columns).
+- Validate that key columns exist and are readable:
+  - test group (expects ad and psa)
+  - converted (boolean / 0–1 outcome)
+  - total ads, most ads day, most ads hour, user id
+- Verify basic data quality:
+  - Check missing values per column (this dataset has 0% missing across columns).
+  - Check duplicate rows (this dataset has 0 duplicates).
+- Standardize values so group comparison stays fair:
+  - Strip column-name spaces.
+  - Normalize group labels to lowercase (ad, psa).
+  - Convert converted into numeric 0/1 when needed (e.g., True/False → 1/0).
+- Summarize the size and outcome of each group (this app shows it in the Overview/EDA sections):
+  - Count users per group (Ad ≫ PSA).
+  - Compute conversion rate per group from converted.
+- Inspect “context columns” that can change results:
+  - Break down conversion by most ads day.
+  - Break down conversion by most ads hour.
+  - Inspect total ads distribution (optionally sample rows for faster charts).
+  - Compare conversion across total ads bins to see whether heavier exposure behaves differently.
+
+### What picture of the problem appears after this check?
+- Confirm that the dataset is clean (no missing, no duplicates), so differences are not driven by data errors.
+- Observe that the experiment is heavily imbalanced in group size (many more rows in ad than psa), so interpretation should stay careful and rely on significance checks.
+- See that conversion is a rare event overall (most rows are converted = 0), so small percentage differences can still matter.
+- Notice that results can shift by day, hour, and ad exposure level, so “one average number” may hide where the effect is strongest or weakest.
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Komposisi%20Group.png" alt="Visualisasi Perbandingan" width="1000">
+</p>

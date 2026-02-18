@@ -138,7 +138,7 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 </p>
 
 <p align="center">
-  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Missing%20Value.png"
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Missing%20value.png"
     alt="Missing value" width="1000">
 </p>
 
@@ -166,5 +166,5 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
   - Why a single overall average can hide important swings.
 
 <p align="center">
-  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20rate%20vs%20total%20ads.png" alt="Conversion rate by" width="1000">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by.png" alt="Conversion rate by" width="1000">
 </p>

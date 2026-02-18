@@ -139,7 +139,7 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Missing%20Value.png"
-    alt="Missing value" width="300">
+    alt="Missing value" width="1000">
 </p>
 
 - A histogram of total ads reveals:
@@ -158,4 +158,13 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20rate%20vs%20total%20ads.png" alt="Conversion rate vs total ads" width="1000">
+</p>
+
+- Day/hour breakdown charts highlight:
+  - Whether the gap between ad and psa is consistent across days and hours.
+  - Which time slices show stronger or weaker conversion.
+  - Why a single overall average can hide important swings.
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20rate%20vs%20total%20ads.png" alt="Conversion rate by" width="1000">
 </p>

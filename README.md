@@ -168,3 +168,127 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by.png" alt="Conversion rate by" width="1000">
 </p>
+
+## How the Experiment Behaves (segments, tests, diagnostics, and planning)?
+
+### What needs to be understood about the experiment’s behaviour?
+- After computing the Ad vs PSA difference, check:
+  - Whether the difference is consistent or “moves around” across slices (day, hour, exposure).
+  - Whether the evidence is strong or could be noise.
+  - Whether the result is big enough to care about, not just “statistically significant”.
+
+### How to analyse that behaviour step by step?
+- Establish the overall result first:
+  - Calculate conversion rate for ad and psa.
+  - Report the observed difference (Ad − PSA).
+- Validate the difference using multiple checks (not one number):
+  - Run a two-proportion z-test on conversion counts.
+  - Run a chi-square test on the 2×2 conversion table.
+  - Run a Welch t-test on the 0/1 conversion vectors (as an additional check).
+  - Report a confidence interval for (CR_ad − CR_psa) using a Wald-style interval.
+- Add an intuitive “is this luck?” check:
+  - Run a permutation test by shuffling converted many times.
+  - Compare the simulated differences to the observed difference.
+  - Report the permutation p-value and show the null distribution histogram.
+- Inspect simple segments to see where the result changes:
+  - Plot conversion rate by most ads day for each group.
+  - Plot conversion rate by most ads hour for each group.
+  - Plot exposure behaviour:
+    - Show the histogram of total ads (sampled).
+    - Show conversion rate vs total ads bins for each group.
+- Support planning for future tests:
+  - Compute effect size using Cohen’s h from the observed conversion rates.
+  - Estimate sample size per group for a chosen effect size and target power:
+    - use statsmodels if available,
+    - otherwise use the built-in fallback approximation.
+
+### What does this reveal in practice?
+- Reveal whether the Ad vs PSA gap looks stable or only appears in certain slices (day/hour/exposure).
+- Provide “trust signals” beyond one p-value by combining:
+  - z-test, chi-square, Welch t-test, confidence interval, and permutation simulation.
+- Show whether the experiment is likely to hold up in real use, and how much sample size is needed to detect similar effects again.
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Difference%20%26%20CI.png" alt="Difference CI" width="1000">
+</p>
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Permutation%20histogram.png" alt="Permutation Importance" width="1000">
+</p>
+
+# How reliable is the Ad vs PSA result?
+
+## What does the final check say?
+- Confirm the direction and size of the result using conversion rate in each group and the difference (Ad − PSA).
+- Validate the same difference using more than one statistical check:
+  - Two-proportion z-test (main test for proportions).
+  - Chi-square test on the 2×2 conversion table.
+  - Welch t-test on 0/1 outcomes (shown as an additional check in the app).
+- Treat agreement across tests as a reliability signal.
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Covession%20Rate%20Table.png" alt="Conversion rate" width="1000">
+</p>
+
+## How often would this difference appear by luck?
+- Simulate the “no real effect” world by shuffling converted values and re-splitting them into Ad-sized and PSA-sized groups.
+- Compare the observed (Ad − PSA) difference against the simulated distribution.
+- Read the permutation p-value as: how often random shuffles produce a difference at least this extreme.
+
+## How does this connect back to earlier sections?
+- Data checks ensure group comparison is not distorted by schema or missing-value issues.
+- Segment views (day/hour/exposure) show where the gap strengthens or weakens.
+- The reliability section adds the final trust layer: repeated tests + a shuffle-based check.
+
+# What this Ad vs PSA A/B test really tells us?
+## What is now known?
+- **Ads may win, but the gap is small.** <br>
+  Conversion is a rare event in this dataset, so the conversion rates look tiny. Even a small difference (Ad − PSA) can still matter for business decisions, but it should be read as “small uplift,” not a dramatic jump.
+
+- **Marketing outcomes naturally look noisy.** <br>
+  People see ads at different times and in different amounts (most ads hour, most ads day, total ads). Because of that, the conversion gap can appear stronger in some slices and weaker in others, even when the overall average is stable.
+
+- **The dataset quality is strong, so the result is not driven by messy data.** <br>
+  The dashboard shows missing-rate checks and basic schema validation (group labels and converted formatting). This keeps the comparison focused on behavior, not cleaning problems.
+
+- **Trust comes from repeated checks, not from one number.** <br>
+  The same Ad vs PSA difference is evaluated through multiple methods in the app (z-test, chi-square, plus the permutation check shown elsewhere). Agreement across checks supports confidence that the observed gap is not just luck, especially with the large sample size and imbalanced groups.
+
+# What to do next?
+### Use “uplift (Ad − PSA)” as the main A/B KPI
+- Treat the primary KPI as conversion rate uplift: CR(ad) − CR(psa).
+- Report it in two forms:
+  - Absolute uplift (percentage points).
+  - Relative lift (optional, for business framing).
+- Track the KPI with the same definition across runs to avoid shifting conclusions.
+
+### Require evidence, not just a higher conversion rate
+- Avoid making a decision from uplift alone.
+- Use at least one statistical confirmation already provided in the dashboard (z-test / chi-square) to support the claim that the gap is unlikely to be random.
+- Treat “significant but tiny” as a different decision category from “significant and meaningful.”
+
+### Check where the effect changes (simple slices)
+- Review breakdown charts already present in the dashboard:
+  - Conversion by most ads day.
+  - Conversion by most ads hour.
+  - Conversion vs total ads (binned).
+- Use these slices to answer practical rollout questions:
+  - Whether uplift appears consistently across days/hours.
+  - Whether uplift grows only at higher total ads exposure.
+
+### Plan the next experiment using power and sample size
+- Use the power / sample-size section to estimate whether the current sample size is sufficient for a chosen minimum detectable effect (via Cohen’s h).
+- Treat planning as mandatory when targeting small uplifts, because small effects require large samples.
+
+### Turn the result into an action, not just a report
+- If Ad wins with reliable evidence: consider rollout with monitoring, then re-check uplift in slices (day/hour/exposure).
+- If no reliable difference appears: consider revising the ad creative, targeting, or exposure strategy, then rerun with a clearer expected effect size.
+- If the effect only appears in certain slices: treat the result as a segmentation opportunity rather than a universal win.
+
+### Standardize reporting for repeatable decisions
+- Keep one consistent reporting set for every run:
+  - CR(ad), CR(psa), uplift.
+  - Significance check(s).
+  - Slice views (day/hour/exposure).
+  - Sample-size planning output.
+- Preserve the same chart definitions to prevent “moving goalposts” between versions.

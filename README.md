@@ -139,5 +139,5 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Missing%20Value.png"
-    alt="Before Data Cleaning" width="500">
+    alt="Before Data Cleaning" width="300">
 </p>

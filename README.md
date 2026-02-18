@@ -95,7 +95,7 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 - Provide a fallback calculation when optional libraries are unavailable, ensuring planning remains available.
 
 <p align="center">
-  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by%20Group.png" alt="Visualisasi Perbandingan" width="1000">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20Rate%20by%20Group.png" alt="Conversion Rate" width="1000">
 </p>
 
 ## How Big the Problem Is (the shape of conversions & data quality)?
@@ -134,10 +134,28 @@ Run A/B comparison, not machine learning, prioritize a clean and fair group comp
 - Notice that results can shift by day, hour, and ad exposure level, so “one average number” may hide where the effect is strongest or weakest.
 
 <p align="center">
-  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Komposisi%20Group.png" alt="Visualisasi Perbandingan" width="1000">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Komposisi%20Group.png" alt="Komposisi Group" width="1000">
 </p>
 
 <p align="center">
   <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Missing%20Value.png"
-    alt="Before Data Cleaning" width="300">
+    alt="Missing value" width="300">
+</p>
+
+- A histogram of total ads reveals:
+  - Where most users cluster in ad exposure (low vs high exposure).
+  - How common extreme exposure is (very few vs very many ads).
+  - Whether exposure is fairly tight or heavily skewed (long-tail users who see lots of ads).
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Distribution%20of%20Total%20ads.png" alt="Distribution Total ads" width="1000">
+</p>
+
+- The “conversion rate vs total ads (binned)” view highlights:
+  - Whether conversion changes as exposure increases.
+  - Whether the pattern differs between ad and psa.
+  - Whether the effect looks steady or only appears at certain exposure ranges (e.g., only after many ads).
+
+<p align="center">
+  <img src="https://github.com/Catherinerezi/Marketing-AB-Test-AD-vs-PSA/blob/main/assets/Conversion%20rate%20vs%20total%20ads.png" alt="Conversion rate vs total ads" width="1000">
 </p>
